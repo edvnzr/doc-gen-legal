@@ -12,27 +12,117 @@ th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:to
 header{display:flex;align-items:center;gap:12px;margin-bottom:8px}header img{width:44px;height:44px;border-radius:10px}
 </style></head>
 <body><main><header><img src="icon.png" alt=""><strong>Doc Gen</strong></header><h1>Delete your Doc Gen account</h1>
-<p>Doc Gen is made by <strong>Leon Digital</strong>. You can ask us to delete your Doc Gen
-account and its associated data at any time.</p>
-<h2>How to request deletion</h2>
-<p><strong>In the app:</strong> open the menu → <strong>Account</strong> → <strong>Delete account</strong>, then send
-the email that opens.</p>
-<p><strong>Without the app:</strong> send an email to
-<a href="mailto:edvnzr@gmail.com?subject=Delete%20my%20Doc%20Gen%20account">edvnzr@gmail.com</a>
+<p>Doc Gen is made by <strong>Leon Digital</strong>. You can delete your Doc Gen account and
+its associated data at any time. Deletion is immediate and cannot be undone.</p>
+<h2>How to delete</h2>
+<p><strong>In the app:</strong> open the menu → <strong>Account</strong> → <strong>Delete account</strong>, type
+"delete account" and confirm. If you signed in more than 10 minutes ago,
+you'll be asked to confirm it's you first.</p>
+<p><strong>On this page:</strong> sign in with the Google account you use in Doc Gen, type
+"delete account" and confirm.</p>
+<div id="del" class="del">
+  <noscript>This form needs JavaScript. You can also delete your account by email (below).</noscript>
+  <div id="del-out" hidden>
+    <button id="del-google" type="button" class="btn">Sign in with Google</button>
+  </div>
+  <div id="del-in" hidden>
+    <p>Signed in as <strong id="del-email"></strong>.
+      <button id="del-switch" type="button" class="link">Not you? Sign out</button></p>
+    <label for="del-typed">Type <strong>delete account</strong> to continue</label>
+    <input id="del-typed" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="delete account">
+    <button id="del-go" type="button" class="btn danger" disabled>Delete my account</button>
+  </div>
+  <p id="del-msg" role="status"></p>
+</div>
+<style>
+.del{border:1px solid var(--line);border-radius:16px;padding:16px;margin:16px 0}
+.del label{display:block;margin:12px 0 6px}
+.del input{width:100%;font:inherit;padding:12px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--fg)}
+.btn{font:inherit;font-weight:600;border:0;border-radius:999px;padding:12px 20px;margin-top:12px;background:#02F5C6;color:#44023B;cursor:pointer}
+.btn.danger{background:#b3261e;color:#fff}.btn:disabled{opacity:.45;cursor:default}
+.link{font:inherit;background:none;border:0;color:var(--accent);text-decoration:underline;cursor:pointer;padding:0}
+#del-msg:empty{display:none}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script>
+(function () {
+  var URL_ = "https://cvzzxbxkymdlmmhyyqlq.supabase.co", KEY = "sb_publishable_mfmpUGpYOS7c9-3EKs3PZA_AZhaerQm";
+  var $ = function (id) { return document.getElementById(id); };
+  var msg = function (t) { $("del-msg").textContent = t; };
+  if (!window.supabase) { msg("Could not load the sign-in library. Use the email option below."); return; }
+  var sb = window.supabase.createClient(URL_, KEY, { auth: { flowType: "pkce" } });
+
+  function show(session) {
+    $("del-out").hidden = !!session;
+    $("del-in").hidden = !session;
+    if (session) $("del-email").textContent = session.user.email || "your account";
+  }
+
+  $("del-google").onclick = function () {
+    msg("");
+    sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: "select_account" } }
+    });
+  };
+  $("del-switch").onclick = function () { sb.auth.signOut().then(function () { show(null); msg(""); }); };
+  $("del-typed").oninput = function () {
+    $("del-go").disabled = this.value.trim().toLowerCase() !== "delete account";
+  };
+  $("del-go").onclick = async function () {
+    if (!confirm("Delete your Doc Gen account now? This cannot be undone.")) return;
+    $("del-go").disabled = true;
+    msg("Deleting…");
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) { show(null); msg("Your sign-in has ended. Sign in again."); return; }
+    try {
+      var r = await fetch(URL_ + "/functions/v1/delete-account", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + s.access_token, apikey: KEY }
+      });
+      var body = await r.json().catch(function () { return {}; });
+      if (r.ok) {
+        await sb.auth.signOut({ scope: "local" });
+        show(null);
+        $("del-out").hidden = true;
+        msg("Your Doc Gen account has been deleted. Documents on your phone are not affected.");
+      } else if (body.error === "reauth_required") {
+        await sb.auth.signOut({ scope: "local" });
+        show(null);
+        msg("For your security, sign in again, then delete.");
+      } else {
+        $("del-go").disabled = false;
+        msg("Could not delete the account. Try again later, or use the email option below.");
+      }
+    } catch (e) {
+      $("del-go").disabled = false;
+      msg("Could not reach the server. Check your connection and try again.");
+    }
+  };
+
+  sb.auth.getSession().then(function (r) { show(r.data.session); });
+  sb.auth.onAuthStateChange(function (_e, session) { show(session); });
+})();
+</script>
+
+
+<p><strong>By email:</strong> if you signed in with an email code, or can't use the options
+above, email <a href="mailto:edvnzr@gmail.com?subject=Delete%20my%20Doc%20Gen%20account">edvnzr@gmail.com</a>
 <strong>from the email address linked to your account</strong>, with the subject
-"Delete my Doc Gen account".</p>
+"Delete my Doc Gen account". We delete it within 30 days and reply to
+confirm.</p>
 <h2>What is deleted</h2>
 <ul>
 <li>Your account: email address and account ID.</li>
 <li>Data linked to your account on our servers.</li>
 </ul>
-<p>We delete it within 30 days of your request and reply to confirm.</p>
 <h2>What is not affected</h2>
 <ul>
 <li>Business records on your device (business profile, customers, documents,
   payments and PDFs) are never stored on our servers. They stay on your
   phone until you uninstall Doc Gen.</li>
 <li>Backup files you saved yourself.</li>
+<li>Purchases, which belong to your Google Play account.</li>
 </ul>
 <p>Questions: <a href="mailto:edvnzr@gmail.com">edvnzr@gmail.com</a>. See also the
 <a href="privacy.html">privacy policy</a>.</p></main></body></html>
